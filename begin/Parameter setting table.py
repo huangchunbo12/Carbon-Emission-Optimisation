@@ -1,13 +1,13 @@
 import pandas as pd
 import numpy as np
 
-# 定义城市类型、情景、时间阶段、变量
+# Define city types, scenarios, time periods, and variables
 clusters = ['Cluster I', 'Cluster II', 'Cluster III', 'Cluster IV']
 scenarios = ['MS', 'BAU', 'HG']
-periods = ['2023–2030', '2031–2040', '2041–2050']
+periods = ['2023-2030', '2031-2040', '2041-2050']
 variables = ['G', 'SI', 'EI', 'ES', 'DMSP']
 
-# 原始均值和方差
+# Original means and variances
 raw_data = {
     'Cluster I': {'G': (13.343/2, 5.595/2), 'ES': (-5.981, 1.282), 'EI': (-6.14, 6.329), 'DMSP': (13.052, 23.794), 'SI': (0.132, 2.966)},
     'Cluster II': {'G': (10.614/2, 5.819/2), 'ES': (-4.582, 1.086), 'EI': (-5.414, 5.51), 'DMSP': (8.129, 25.357), 'SI': (-1.443, 3.679)},
@@ -15,7 +15,7 @@ raw_data = {
     'Cluster IV': {'G': (13.548/2, 6.871/2), 'ES': (-2.069, 1.389), 'EI': (-3.538, 6.519), 'DMSP': (13.476, 26.697), 'SI': (0.777, 4.718)}
 }
 
-# 自定义更精细化的缩放因子（城市类型 × 变量 × 情景 × 阶段）
+# Define fine-tuned scaling factors (cluster x variable x scenario x period)
 adjustments = {
     'Cluster I': {
         'G': {'MS': [0.8, 0.6, 0.4], 'BAU': [1.0, 0.8, 0.6], 'HG': [1.2, 1.0, 0.8]},
@@ -47,23 +47,23 @@ adjustments = {
     }
 }
 
-# 构建模拟参数表
+# Build the simulation parameters table
 simulation_data = []
 for cluster in clusters:
     for scenario in scenarios:
         for i, period in enumerate(periods):
             row = {
-                '城市类型': cluster,
-                '情景': scenario,
-                '时间阶段': period
+                'City Type': cluster,
+                'Scenario': scenario,
+                'Time Period': period
             }
             for var in variables:
                 mean, var_ = raw_data[cluster][var]
                 m = adjustments[cluster][var][scenario][i]
-                row[f'{var}_均值'] = round(mean * m, 3)
-                row[f'{var}_方差'] = round(var_ * ((-m + 2) ** 1), 3)
+                row[f'{var}_Mean'] = round(mean * m, 3)
+                row[f'{var}_Variance'] = round(var_ * ((-m + 2) ** 1), 3)
             simulation_data.append(row)
 
-# 转换为 DataFrame 并保存
+# Convert to DataFrame and save
 df_simulation = pd.DataFrame(simulation_data)
-df_simulation.to_excel("仿真参数设定表_最终版.xlsx", index=False)
+df_simulation.to_excel("Simulation_Parameters_Final.xlsx", index=False)

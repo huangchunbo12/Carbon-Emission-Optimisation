@@ -1,25 +1,25 @@
 import pandas as pd
 from statsmodels.stats.diagnostic import acorr_ljungbox
 
-# 读取Excel数据
-file_path = r"C:\Users\ARIMA残差表.xlsx"
+# Read Excel data
+file_path = r"C:\Users\ARIMA_residuals.xlsx"
 data = pd.read_excel(file_path)
 
-# Ljung-Box Q检验
+# Ljung-Box Q-test
 results = {}
 for column in data.columns:
-    # 进行Ljung-Box Q检验，滞后项设置为最大可以的滞后（样本点数-1）
+    # Perform Ljung-Box Q-test, with lags set to a maximum of 10 or (n-1)
     lb_test = acorr_ljungbox(data[column], lags=min(10, len(data)-1), return_df=True)
     results[column] = lb_test
 
-# 将结果整理成一个DataFrame
+# Organize results into a single DataFrame
 output_df = pd.DataFrame()
 
 for column, result in results.items():
     output_df[f'{column}_Q_statistic'] = result['lb_stat']
     output_df[f'{column}_p_value'] = result['lb_pvalue']
 
-# 将结果保存为Excel文件
+# Save results to an Excel file
 output_file = r"C:\Users\15549\Desktop\Ljung_Box_Test_Results.xlsx"
 output_df.to_excel(output_file, index=False)
 

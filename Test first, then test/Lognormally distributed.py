@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from scipy import stats
 
-# 显著性标记函数
+# Significance marker function
 def get_significance(p, alpha=0.05):
     if p < 0.001:
         return '***'
@@ -13,10 +13,10 @@ def get_significance(p, alpha=0.05):
     else:
         return ''
 
-# 分布列表（可根据需要调整）
+# List of distributions (can be adjusted as needed)
 distributions = ['lognorm', 'expon', 'gamma', 'beta', 'weibull_min']
 
-# KS检验函数，对一列数据测试多种分布
+# KS test function to test a single column against multiple distributions
 def ks_test_all_distributions(data, var_name, sheet_name):
     results = []
     for dist_name in distributions:
@@ -25,27 +25,27 @@ def ks_test_all_distributions(data, var_name, sheet_name):
             params = dist.fit(data)
             stat, p = stats.kstest(data, dist_name, args=params)
             results.append({
-                'sheet名': sheet_name,
-                '变量名': var_name,
-                '检验分布': dist_name,
-                'KS统计量': round(stat, 4),
-                'P值': round(p, 4),
-                '显著性': get_significance(p)
+                'Sheet Name': sheet_name,
+                'Variable Name': var_name,
+                'Distribution Tested': dist_name,
+                'KS Statistic': round(stat, 4),
+                'P-value': round(p, 4),
+                'Significance': get_significance(p)
             })
         except Exception:
             results.append({
-                'sheet名': sheet_name,
-                '变量名': var_name,
-                '检验分布': dist_name,
-                'KS统计量': None,
-                'P值': None,
-                '显著性': ''
+                'Sheet Name': sheet_name,
+                'Variable Name': var_name,
+                'Distribution Tested': dist_name,
+                'KS Statistic': None,
+                'P-value': None,
+                'Significance': ''
             })
     return results
 
-# === 主程序部分 ===
-input_file = r"C:\新建 XLSX 工作表 (2).xlsx"
-output_file = r"C:\多分布检验结果.xlsx"
+# === Main program ===
+input_file = r"C:\new XLSX worksheet (2).xlsx"
+output_file = r"C:\Multi-Distribution_Test_Results.xlsx"
 
 xlsx = pd.ExcelFile(input_file)
 all_results = []
@@ -60,7 +60,7 @@ for sheet_name in xlsx.sheet_names:
             res = ks_test_all_distributions(data, col, sheet_name)
             all_results.extend(res)
 
-# 保存所有结果
+# Save all results
 final_df = pd.DataFrame(all_results)
 final_df.to_excel(output_file, index=False)
-print(f"多分布K-S检验完成，结果已保存为：{output_file}")
+print(f"Multi-distribution K-S test completed, results saved to: {output_file}")

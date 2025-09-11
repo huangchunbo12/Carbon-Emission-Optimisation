@@ -3,8 +3,8 @@ import numpy as np
 from scipy.stats import shapiro
 
 
-def get_significance(p, alpha=0.05):
-    """根据P值返回显著性标记：p<0.001返回'***'，p<0.01返回'**'，p<0.05返回'*'，否则返回空字符串。"""
+def get_significance_marker(p, alpha=0.05):
+    """Returns significance markers based on the p-value: '***' for p<0.001, '**' for p<0.01, '*' for p<0.05, otherwise an empty string."""
     if p < 0.001:
         return '***'
     elif p < 0.01:
@@ -15,51 +15,50 @@ def get_significance(p, alpha=0.05):
         return ''
 
 
-# 输入输出Excel文件路径
-input_file = r"C:\Users\新建 XLSX 工作表 (2).xlsx"
+# Define input and output Excel file paths
+input_file = r"C:\Users\new XLSX worksheet (2).xlsx"
 output_file = r'C:\Users\SW_test_results.xlsx'
 
-# 读取Excel文件（包含多个sheet）
+# Read the Excel file (which may contain multiple sheets)
 xlsx = pd.ExcelFile(input_file)
 writer = pd.ExcelWriter(output_file, engine='openpyxl')
 
-# 显著性水平
+# Significance level
 alpha = 0.05
 
-# 遍历每个sheet
+# Iterate through each sheet
 for sheet_name in xlsx.sheet_names:
     df = xlsx.parse(sheet_name)
 
-    # 选择数值型列（排除年份、省份等非数值型列）
+    # Select numerical columns (excluding non-numerical ones like 'Year' or 'Province')
     numeric_cols = df.select_dtypes(include=[np.number]).columns
-    results = []  # 存储本sheet的结果
+    results = []  # Store the results for the current sheet
 
-    # 对每一列分别计算SW检验
+    # Perform Shapiro-Wilk test for each column
     for col in numeric_cols:
-        data = df[col].dropna()  # 删除缺失值
+        data = df[col].dropna()  # Drop missing values
 
-        # 如果数据样本量太少或标准差为0，则无法进行检验
+        # The test requires at least 3 samples and non-zero standard deviation
         if len(data) < 3 or data.std(ddof=0) == 0:
             sw_stat, sw_p = np.nan, np.nan
         else:
             sw_stat, sw_p = shapiro(data)
 
-        # 格式化统计量和P值均保留3位小数
+        # Format the statistic and p-value to 3 decimal places
         sw_stat_str = f"{sw_stat:.3f}" if not np.isnan(sw_stat) else ""
         sw_p_str = f"{sw_p:.3f}" if not np.isnan(sw_p) else ""
 
-        # 添加显著性标记
-        signif = get_significance(sw_p, alpha) if not np.isnan(sw_p) else ""
+        # Add significance marker
+        signif = get_significance_marker(sw_p, alpha) if not np.isnan(sw_p) else ""
         sw_p_marked = f"{sw_p_str}{signif}" if sw_p_str != "" else ""
 
         results.append([col, sw_stat_str, sw_p_marked])
 
-    # 生成结果DataFrame，列为：列名, SW统计量, SW P值及显著性
-    result_df = pd.DataFrame(results, columns=['列名', 'SW统计量', 'SW P值及显著性'])
-    # 将结果写入输出Excel的对应sheet
+    # Create a result DataFrame with columns: 'Column Name', 'SW Statistic', 'SW P-value & Significance'
+    result_df = pd.DataFrame(results, columns=['Column Name', 'SW Statistic', 'SW P-value & Significance'])
+    # Write the results to the corresponding sheet in the output Excel file
     result_df.to_excel(writer, sheet_name=sheet_name, index=False)
 
-# 保存输出Excel
+# Save the output Excel file
 writer.close()
-print("SW检验结果已保存到", output_file)
-
+print("Shapiro-Wilk test results have been saved to", output_file)

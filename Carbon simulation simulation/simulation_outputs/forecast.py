@@ -6,17 +6,17 @@ import sys
 import hashlib
 from sklearn.preprocessing import MinMaxScaler
 
-# 修复 numpy 兼容性问题
+# Fix numpy compatibility issue
 import numpy.core as np_core
 sys.modules['numpy._core'] = np_core
 
-# 设置随机种子
+# Set a random seed for reproducibility
 np.random.seed(42)
 
-# 定义5个指标
+# Define the 5 indicators
 indicators = ['G', 'SI', 'ES', 'EI', 'DMSP']
 
-# 定义每个簇对应的模型配置
+# Define model configurations for each cluster
 cluster_info = {
     0: {
         "cluster_name": "Cluster I",
@@ -64,11 +64,11 @@ cluster_info = {
     }
 }
 
-# 输出目录
+# Output directory
 output_dir = "prediction_outputs"
 os.makedirs(output_dir, exist_ok=True)
 
-# 遍历每个簇
+# Iterate through each cluster
 for cluster_num in cluster_info:
     info = cluster_info[cluster_num]
     cluster_name = info["cluster_name"]
@@ -76,22 +76,22 @@ for cluster_num in cluster_info:
     scaler_file = info["scaler_file"]
 
     print(f"\n{'='*40}")
-    print(f"处理 {cluster_name} ...")
+    print(f"Processing {cluster_name} ...")
 
-    # ================ 加载归一化 scaler =================
+    # ================ Load MinMaxScaler =================
     if os.path.exists(scaler_file):
         try:
             with open(scaler_file, "rb") as f:
                 scaler_X = pickle.load(f)
-            print(f"成功加载归一化 scaler：{scaler_file}")
+            print(f"Successfully loaded scaler: {scaler_file}")
         except Exception as e:
-            print(f"加载归一化 scaler 失败: {str(e)}")
+            print(f"Failed to load scaler: {str(e)}")
             scaler_X = MinMaxScaler()
     else:
-        print(f"归一化 scaler 文件不存在: {scaler_file}")
+        print(f"Scaler file does not exist: {scaler_file}")
         scaler_X = MinMaxScaler()
 
-    # ================ 加载基模型 =================
+    # ================ Load base models =================
     base_models = {}
     base_model_types = ['XGB', 'GBDT', 'AdaBoost', 'RF']
     for model_type in base_model_types:
@@ -99,13 +99,13 @@ for cluster_num in cluster_info:
         try:
             with open(model_file, "rb") as f:
                 base_models[model_type] = pickle.load(f)
-            print(f"成功加载基模型：{model_type}")
+            print(f"Successfully loaded base model: {model_type}")
         except Exception as e:
-            print(f"加载基模型 {model_type} 失败: {str(e)}")
+            print(f"Failed to load base model {model_type}: {str(e)}")
             continue
 
     if len(base_models) != 4:
-        print(f"基模型加载不完整，跳过 {cluster_name}")
+        print(f"Incomplete base models loaded, skipping {cluster_name}")
         continue
 
     stacking_model_file = info["stacking_model_file"]
@@ -113,40 +113,40 @@ for cluster_num in cluster_info:
         try:
             with open(stacking_model_file, "rb") as f:
                 stacking_model = pickle.load(f)
-            print(f"成功加载融合模型：{stacking_model_file}")
+            print(f"Successfully loaded stacking model: {stacking_model_file}")
         except Exception as e:
-            print(f"加载融合模型失败: {str(e)}")
+            print(f"Failed to load stacking model: {str(e)}")
             continue
     else:
-        print(f"融合模型文件不存在: {stacking_model_file}")
+        print(f"Stacking model file does not exist: {stacking_model_file}")
         continue
 
-    # ================ 处理模拟情景 =================
+    # ================ Process simulation scenarios =================
     for scenario, sim_file in info["sim_files"].items():
-        print(f"\n处理情景 {scenario} ...")
+        print(f"\nProcessing scenario {scenario} ...")
         if not os.path.exists(sim_file):
-            print(f"模拟文件不存在：{sim_file}")
+            print(f"Simulation file does not exist: {sim_file}")
             continue
 
         try:
-            # 预先读取 Excel 文件中各指标对应的 sheet
+            # Pre-read each indicator's sheet from the Excel file
             xls = pd.ExcelFile(sim_file)
             indicator_data = {}
             for ind in indicators:
                 try:
                     df = pd.read_excel(xls, sheet_name=ind)
                     indicator_data[ind] = df
-                    print(f"成功读取指标 {ind} 的数据")
+                    print(f"Successfully read data for indicator {ind}")
                 except Exception as e:
-                    print(f"读取指标 {ind} 失败: {str(e)}")
+                    print(f"Failed to read indicator {ind}: {str(e)}")
             if len(indicator_data) != len(indicators):
-                print("部分指标数据读取失败，跳过该情景")
+                print("Failed to read data for some indicators, skipping this scenario.")
                 continue
         except Exception as e:
-            print(f"读取模拟文件失败: {str(e)}")
+            print(f"Failed to read simulation file: {str(e)}")
             continue
 
-        num_sim = 500  # 模拟次数
+        num_sim = 500  # Number of simulations
         predictions_list = []
         base_df = None
         history_hashes = set()
@@ -156,17 +156,17 @@ for cluster_num in cluster_info:
             valid_sim = True
             for ind in indicators:
                 df = indicator_data[ind]
-                col_name = f"模拟_{sim_idx}"
+                col_name = f"Simulation_{sim_idx}"
                 if col_name not in df.columns:
-                    print(f"指标 {ind} 缺少列 {col_name}，跳过模拟 {sim_idx}")
+                    print(f"Indicator {ind} is missing column {col_name}, skipping simulation {sim_idx}")
                     valid_sim = False
                     break
                 try:
-                    df_sim = df.loc[:, ["省份", "年份", col_name]].copy()
+                    df_sim = df.loc[:, ["Province", "Year", col_name]].copy()
                     df_sim = df_sim.rename(columns={col_name: ind})
                     sim_data[ind] = df_sim
                 except Exception as e:
-                    print(f"处理指标 {ind} 在模拟 {sim_idx} 时失败: {str(e)}")
+                    print(f"Failed to process indicator {ind} in simulation {sim_idx}: {str(e)}")
                     valid_sim = False
                     break
             if not valid_sim:
@@ -174,31 +174,31 @@ for cluster_num in cluster_info:
 
             merged_sim = sim_data[indicators[0]]
             for ind in indicators[1:]:
-                merged_sim = pd.merge(merged_sim, sim_data[ind], on=["省份", "年份"], how="inner")
+                merged_sim = pd.merge(merged_sim, sim_data[ind], on=["Province", "Year"], how="inner")
 
             if sim_idx == 1:
-                base_df = merged_sim[["省份", "年份"]].copy()
+                base_df = merged_sim[["Province", "Year"]].copy()
 
             feature_cols = indicators
             missing_cols = [col for col in feature_cols if col not in merged_sim.columns]
             if missing_cols:
-                print(f"模拟 {sim_idx} 缺少特征列：{missing_cols}")
+                print(f"Simulation {sim_idx} is missing feature columns: {missing_cols}")
                 continue
 
-            # 生成哈希值，避免重复数据
+            # Generate hash to avoid duplicate data
             current_hash = hashlib.sha256(merged_sim.to_csv().encode()).hexdigest()
             if current_hash in history_hashes:
-                print(f"警告：模拟 {sim_idx} 数据与历史轮次重复！")
+                print(f"Warning: Simulation {sim_idx} data is a duplicate of a previous run!")
             else:
                 history_hashes.add(current_hash)
 
             try:
-                # 保持DataFrame结构以保留列名
+                # Keep DataFrame structure to retain column names
                 X_base = merged_sim[feature_cols].copy()
 
-                # 确保 scaler 已经 fit（如果没有，则用当前数据进行 fit）
+                # Ensure scaler is fitted (if not, fit it with the current data)
                 if not hasattr(scaler_X, 'min_'):
-                    print("scaler_X 尚未 fit，现在使用当前数据进行 fit")
+                    print("scaler_X has not been fitted, fitting with current data now.")
                     scaler_X.fit(X_base)
 
                 X_base_scaled = scaler_X.transform(X_base)
@@ -210,37 +210,37 @@ for cluster_num in cluster_info:
                 X_stacked = np.hstack(preds)
                 y_pred = stacking_model.predict(X_stacked)
 
-                sim_pred_df = pd.DataFrame({f"预测_{sim_idx}": y_pred.flatten()}, index=merged_sim.index)
+                sim_pred_df = pd.DataFrame({f"Prediction_{sim_idx}": y_pred.flatten()}, index=merged_sim.index)
                 predictions_list.append(sim_pred_df)
             except Exception as e:
-                print(f"模拟 {sim_idx} 预测失败: {str(e)}")
+                print(f"Simulation {sim_idx} prediction failed: {str(e)}")
                 continue
 
         if not predictions_list:
-            print("当前情景未生成任何预测结果")
+            print("No prediction results generated for this scenario.")
             continue
 
-        # 合并所有模拟的预测结果，与省份和年份数据拼接
+        # Concatenate all simulation predictions and merge with Province and Year data
         predictions_df = pd.concat(predictions_list, axis=1)
         pred_df = pd.concat([base_df, predictions_df], axis=1)
 
-        # 保存原始预测结果
-        output_file = os.path.join(output_dir, f"{cluster_name.replace(' ', '')}_{scenario}_CO2_预测.xlsx")
+        # Save the raw prediction results
+        output_file = os.path.join(output_dir, f"{cluster_name.replace(' ', '')}_{scenario}_CO2_Predictions.xlsx")
         try:
             pred_df.to_excel(output_file, index=False)
-            print(f"成功保存预测结果：{output_file}")
+            print(f"Successfully saved prediction results: {output_file}")
         except Exception as e:
-            print(f"保存结果失败: {str(e)}")
+            print(f"Failed to save results: {str(e)}")
 
-        # ================ 根据“年份”分组，对每个模拟轮次内省份不同但日期相同的数据累加 =================
-        # 复制一份 DataFrame，减少内存碎片问题
+        # ================ Group by 'Year' and sum data across provinces for each simulation run =================
+        # Make a copy to prevent memory fragmentation issues
         pred_df = pred_df.copy()
-        agg_pred_df = pred_df.groupby("年份", as_index=False).sum()
-        output_file_agg = os.path.join(output_dir, f"{cluster_name.replace(' ', '')}_{scenario}_CO2_预测_aggregated.xlsx")
+        agg_pred_df = pred_df.groupby("Year", as_index=False).sum()
+        output_file_agg = os.path.join(output_dir, f"{cluster_name.replace(' ', '')}_{scenario}_CO2_Predictions_Aggregated.xlsx")
         try:
             agg_pred_df.to_excel(output_file_agg, index=False)
-            print(f"成功保存汇总预测结果：{output_file_agg}")
+            print(f"Successfully saved aggregated prediction results: {output_file_agg}")
         except Exception as e:
-            print(f"保存汇总结果失败: {str(e)}")
+            print(f"Failed to save aggregated results: {str(e)}")
 
-print("\n全部处理完成！")
+print("\nAll processing complete!")

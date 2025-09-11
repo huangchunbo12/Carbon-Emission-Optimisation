@@ -10,21 +10,21 @@ from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
 
 # ---------------------------
-# 数据加载及预处理（训练、测试、验证按指定年份划分）
+# Data Loading and Preprocessing (Training, Testing, Validation split by year)
 # ---------------------------
-file_path = r'Cluster_0_data.xlsx'  # 修改文件名
+file_path = r'Cluster_0_data.xlsx'  # Modify file name
 data = pd.read_excel(file_path)
 cluster_name = os.path.splitext(os.path.basename(file_path))[0]
 
 X_columns = ['G', 'SI', 'ES', 'EI', 'DMSP']
 y_column = 'CO2 Emissions'
 
-# 数据集划分保持不变
-train_data = data[((data['年份'] >= 2000) & (data['年份'] <= 2003)) |
-                  ((data['年份'] >= 2020) & (data['年份'] <= 2022)) |
-                  ((data['年份'] >= 2007) & (data['年份'] <= 2015))]
-test_data = data[(data['年份'] >= 2016) & (data['年份'] <= 2019)]
-val_data = data[(data['年份'] >= 2004) & (data['年份'] <= 2006)]
+# Dataset split remains the same
+train_data = data[((data['Year'] >= 2000) & (data['Year'] <= 2003)) |
+                  ((data['Year'] >= 2020) & (data['Year'] <= 2022)) |
+                  ((data['Year'] >= 2007) & (data['Year'] <= 2015))]
+test_data = data[(data['Year'] >= 2016) & (data['Year'] <= 2019)]
+val_data = data[(data['Year'] >= 2004) & (data['Year'] <= 2006)]
 
 X_train = train_data[X_columns]
 y_train = train_data[y_column]
@@ -33,19 +33,19 @@ y_test = test_data[y_column]
 X_val = val_data[X_columns]
 y_val = val_data[y_column]
 
-# 对特征归一化
+# Normalize features
 scaler_X = MinMaxScaler()
 X_train_scaled_np = scaler_X.fit_transform(X_train)
 X_test_scaled_np = scaler_X.transform(X_test)
 X_val_scaled_np = scaler_X.transform(X_val)
 
-# 目标值使用原始数值
+# Use original values for the target
 y_train_np = y_train.values.reshape(-1, 1)
 y_test_np = y_test.values.reshape(-1, 1)
 y_val_np = y_val.values.reshape(-1, 1)
 
 # ---------------------------
-# 评估指标计算函数：R2, VAF, RMSLE, KGE
+# Evaluation Metrics Functions: R2, VAF, RMSLE, KGE
 # ---------------------------
 def compute_kge(y_true, y_pred):
     cc = np.corrcoef(y_true, y_pred)[0, 1]
@@ -64,13 +64,13 @@ def compute_metrics(y_true, y_pred):
     return r2, vaf, rmsle, kge
 
 # ---------------------------
-# 主程序：直接使用给定超参数训练模型
+# Main Program: Train models directly with given hyperparameters
 # ---------------------------
 if __name__ == '__main__':
-    # 初始化各模型（使用更新后的超参数）
+    # Initialize models (using updated hyperparameters)
     models = {
         'XGB': xgb.XGBRegressor(
-            n_estimators=282,  # 修改参数
+            n_estimators=282,  # Modified parameter
             learning_rate=0.22624,
             max_depth=3,
             reg_alpha=0.51622,
@@ -79,7 +79,7 @@ if __name__ == '__main__':
             verbosity=0
         ),
         'GBDT': GradientBoostingRegressor(
-            n_estimators=983,  # 修改参数
+            n_estimators=983,  # Modified parameter
             learning_rate=0.12682,
             max_depth=6,
             subsample=0.50004,
@@ -88,15 +88,15 @@ if __name__ == '__main__':
         ),
         'AdaBoost': AdaBoostRegressor(
             estimator=DecisionTreeRegressor(
-                max_depth=3,  # 修改参数
+                max_depth=3,  # Modified parameter
                 min_samples_leaf=1
             ),
-            n_estimators=946,  # 修改参数
+            n_estimators=946,  # Modified parameter
             learning_rate=0.78341,
             random_state=42
         ),
         'RF': RandomForestRegressor(
-            n_estimators=21,  # 修改参数
+            n_estimators=21,  # Modified parameter
             max_depth=10,
             max_features=0.43295,
             random_state=42
@@ -105,13 +105,13 @@ if __name__ == '__main__':
 
     model_objects = {}
     for model_name in models:
-        print(f"训练{model_name}模型...")
+        print(f"Training {model_name} model...")
         model = models[model_name]
         model.fit(X_train_scaled_np, y_train.values.ravel())
         model_objects[model_name] = model
 
     # ---------------------------
-    # 生成Stacking特征
+    # Generate Stacking features
     # ---------------------------
     train_stack = np.zeros((X_train.shape[0], len(models)))
     test_stack = np.zeros((X_test.shape[0], len(models)))
@@ -124,7 +124,7 @@ if __name__ == '__main__':
         val_stack[:, i] = model.predict(X_val_scaled_np)
 
     # ---------------------------
-    # 训练Stacking元模型
+    # Train Stacking meta-models
     # ---------------------------
     meta_linear = LinearRegression()
     meta_linear.fit(train_stack, y_train.values.ravel())
@@ -133,7 +133,7 @@ if __name__ == '__main__':
     meta_tree.fit(train_stack, y_train.values.ravel())
 
     # ---------------------------
-    # 计算评估指标
+    # Calculate evaluation metrics
     # ---------------------------
     metrics = {}
     for model_name in models:
@@ -159,36 +159,36 @@ if __name__ == '__main__':
     }
 
     # ---------------------------
-    # 保存所有模型权重
+    # Save all model weights
     # ---------------------------
     for model_name in model_objects:
-        filename = f"Cluster_0_data_pop50_{model_name}_model.pkl"  # 修改文件名
+        filename = f"Cluster_0_data_pop50_{model_name}_model.pkl"  # Modify filename
         with open(filename, "wb") as f:
             pickle.dump(model_objects[model_name], f)
-        print(f"已保存基模型：{filename}")
+        print(f"Saved base model: {filename}")
 
-    stacking_linear_file = f"Cluster_0_data_pop50_stacking_linear_model.pkl"  # 修改文件名
+    stacking_linear_file = f"Cluster_0_data_pop50_stacking_linear_model.pkl"  # Modify filename
     with open(stacking_linear_file, "wb") as f:
         pickle.dump(meta_linear, f)
-    print(f"已保存集成模型：{stacking_linear_file}")
+    print(f"Saved stacking model: {stacking_linear_file}")
 
-    stacking_tree_file = f"Cluster_0_data_pop50_stacking_tree_model.pkl"  # 修改文件名
+    stacking_tree_file = f"Cluster_0_data_pop50_stacking_tree_model.pkl"  # Modify filename
     with open(stacking_tree_file, "wb") as f:
         pickle.dump(meta_tree, f)
-    print(f"已保存集成模型：{stacking_tree_file}")
+    print(f"Saved stacking model: {stacking_tree_file}")
 
-    # 保存归一化对象
-    scaler_filename = f"Cluster_0_data_pop50_scaler_X.pkl"  # 修改文件名
+    # Save scaler object
+    scaler_filename = f"Cluster_0_data_pop50_scaler_X.pkl"  # Modify filename
     with open(scaler_filename, "wb") as f:
         pickle.dump(scaler_X, f)
-    print(f"已保存归一化对象：{scaler_filename}")
+    print(f"Saved scaler object: {scaler_filename}")
 
     # ---------------------------
-    # 保存结果到Excel
+    # Save results to Excel
     # ---------------------------
-    excel_file_name = f"{cluster_name}_pop50_Optimized_Results.xlsx"  # 自动使用Cluster_0_data
+    excel_file_name = f"{cluster_name}_pop50_Optimized_Results.xlsx"  # Automatically uses Cluster_0_data
 
-    # 基模型结果
+    # Base model results
     base_results = []
     for model_name in metrics:
         for dataset in ['Train', 'Test', 'Validation']:
@@ -202,7 +202,7 @@ if __name__ == '__main__':
                 'KGE': kge
             })
 
-    # 集成模型结果
+    # Stacking model results
     stacking_results = []
     for method in ['Linear', 'Tree']:
         for dataset in ['Test', 'Validation']:
@@ -231,5 +231,5 @@ if __name__ == '__main__':
         results_df.to_excel(writer, sheet_name="Model Metrics", index=False)
         params_df.to_excel(writer, sheet_name="Hyperparameters", index=False)
 
-    print(f"\n结果已保存至：{excel_file_name}")
-    print("任务已完成。")
+    print(f"\nResults have been saved to: {excel_file_name}")
+    print("Task completed.")
